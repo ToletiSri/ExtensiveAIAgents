@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Order Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Food Order Assistant</h2>
+        <div class="order-row">
+            <input type="text" id="orderInput" placeholder="How can I help you?" />
+            <button id="settingsBtn" title="Settings">⚙️</button>
+        </div>
+        <div id="settingsPanel" class="hidden">
+            <label for="cuisine">Cuisine Preference:</label>
+            <input type="text" id="cuisine" placeholder="e.g. Italian, Indian" />
+            <label for="vegToggle">
+                <input type="checkbox" id="vegToggle" /> Vegetarian
+            </label>
+            <button id="saveSettings">Save Settings</button>
+        </div>
+        <hr />
+        <button id="submitOrder">Submit</button>
+        <div id="responseBox"></div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
