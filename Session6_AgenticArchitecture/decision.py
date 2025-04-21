@@ -3,7 +3,8 @@ import os
 import asyncio
 from concurrent.futures import TimeoutError
 from action import MCPClient
-
+from dotenv import load_dotenv
+load_dotenv()
 
 # Access your API key and initialize Gemini client correctly
 api_key = os.environ.get('GOOGLE_API_KEY')
@@ -52,12 +53,14 @@ async def process_order_facts(facts, memory=None, mcpClient: MCPClient=None):
     Optionally receives the shared memory object from main.py.
     Returns a decision or suggestion (stub for now).
     """
+    reset_state()
     print(f"[DECISION DEBUG] Received facts: {facts}", flush=True)
     
     if hasattr(facts, 'model_dump'):
         facts = facts.model_dump()
     print(f"[DECISION DEBUG] Facts after model_dump: {facts}", flush=True)
-    
+
+       
     # Use the shared memory object if provided
     pref_dict = None
     if memory is not None:
@@ -70,21 +73,22 @@ async def process_order_facts(facts, memory=None, mcpClient: MCPClient=None):
     print(f"[DECISION DEBUG] Available tools: {tools_description}", flush=True)
 
     system_prompt = f"""
-    You are a Food ordering agent, ordering food items for the user.
-    
-    You are given the user order as a json string and memory as a dictionary.
+    You are a Food ordering agent, ordering food items for the user. Your job is to first check the user order and then make a decision based on the user order. 
+    You are given the user order as a json string and user preferences as a dictionary. Assume that the current location is bangalore
     
     You also have access to the following tool functions:
     {tools_description}
     
-    YOu can call the functions from list above depending on the action from json user query. You must respond with EXACTLY ONE line in one of these formats (no additional text):
+    You can call the functions from list above depending on the action from json user query. You must respond with EXACTLY ONE line in one of these formats (no additional text):
     
     1. For function calls:
     FUNCTION_CALL: function_name|<JSON string>
-    
-    2. For final suggestion:
-    FINAL_RESULT: [string]
 
+    2. For intermediate food suggestion:
+    INTERMEDIATE_RESULT_FOOD_SUGGESTION: [string]
+    
+    3. For final suggestion:
+    FINAL_RESULT: [string]
 
     
     IMPORTANT:
@@ -97,6 +101,7 @@ async def process_order_facts(facts, memory=None, mcpClient: MCPClient=None):
     
     - FUNCTION_CALL: order_food|{{"dish": "fries"}}
     - FUNCTION_CALL: get_weather|{{"time": "now", "place": "bangalore"}}
+    - INTERMEDIATE_RESULT_FOOD_SUGGESTION: 'Because you are feeling stressed, we suggest ordering chamomile tea'
     - FINAL_RESULT: 'We have ordered the popular benne masala dosa for your breakfast! Enjoy your meal!!'
     
     DO NOT include any explanations or additional text.
@@ -182,6 +187,18 @@ async def process_order_facts(facts, memory=None, mcpClient: MCPClient=None):
                 final_suggestion = response_text.replace("FINAL_RESULT:", "").strip()
                 print("\n=== Returning final result ===", flush=True)
                 return final_suggestion
+
+            elif response_text.startswith("INTERMEDIATE_RESULT_FOOD_SUGGESTION:"):
+                # Remove FINAL_RESULT: from response_text and return it
+                iteration_result = response_text.replace("INTERMEDIATE_RESULT_FOOD_SUGGESTION:", "").strip()
+                print(f"DEBUG: INTERMEDIATE_RESULT_FOOD_SUGGESTION: {iteration_result}", flush=True)
+                result_str = f"[{', '.join(iteration_result)}]" if isinstance(iteration_result, list) else str(iteration_result)
+                iteration_response.append(
+                    f"In the {iteration + 1} iteration you called {func_name} with {param_parts} parameters, "
+                    f"and the function returned {result_str}."
+                )
+                last_response = iteration_result
+            iteration += 1
 
         except Exception as e:
             print(f"Failed to get LLM response: {e}", flush=True)

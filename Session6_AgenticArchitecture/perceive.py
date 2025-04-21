@@ -3,6 +3,8 @@ import google.generativeai as genai
 import ast
 from DataStructures import UserOrder
 import json
+from dotenv import load_dotenv
+load_dotenv()
 
 # Access your API key and initialize Gemini client correctly
 api_key=os.environ.get('GOOGLE_API_KEY')

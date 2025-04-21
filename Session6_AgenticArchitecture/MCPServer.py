@@ -4,7 +4,8 @@ from mcp.server.fastmcp.prompts import base
 
 import sys
 from DataStructures import SuggestedDish, WeatherDetails, WeatherInputs
-
+from dotenv import load_dotenv
+import os
 
 # instantiate an MCP server client
 mcp = FastMCP("FoodOrderAgent")
@@ -15,28 +16,39 @@ mcp = FastMCP("FoodOrderAgent")
 @mcp.tool()
 def order_food(input: SuggestedDish) -> bool:
     """Orders food that is passed as a parameter
-    Param: SuggestedDish - pydantic structure having 'dish' as a key. Value is a string
+    Param input: SuggestedDish - pydantic structure having 'dish' as a key. Value is a string
      Eg: {"dish": "pizza"}
      Returns true on a succssful operation, else returns false"""
         
     # TODO - Implement the actual food ordering, using available APIs from food delivery companies
     #Since nothing is available as of now, just print and return true
-    print(f"[ORDER_FOOD DEBUG] Ordered: {input.dish}", flush=True)
+    print(f"[MCP_SERVER ORDER_FOOD DEBUG] Your order is indeed executed - : {input.dish}", flush=True)
     return True
 
 # Get weather tool
 @mcp.tool()
 def get_weather(input: WeatherInputs) -> WeatherDetails:
-    """Gets weather for a given location and time
-    Param: WeatherInputs - Pydantic data structure that contains variables -  time: str and place: str
-      Eg: {"time": "now", "place": "bangalore"}  
+    """Gets weather for a given place
+    Param input: WeatherInputs - Pydantic data structure that contains variables -  place: str
+      Eg: {"place": "bangalore"}  
     ReturnType - WeatherDetails - Pydantic data structure that contains variables - weather: str
-      Eg: {"weather": "rainy"}
+      Eg: {"weather": "rain","description":" light rain"}
     """
     
-    # TODO - Implement the actual weather getting tool 
-    print(f"[GET_WEATHER DEBUG] Weather requested for time: {input.time}, place: {input.place}", flush=True)
-    return WeatherDetails(weather = 'rainy')
+    import requests
+    print(f"[ MCP_SERVER GET_WEATHER DEBUG] Weather requested for place: {input.place}", flush=True)
+    load_dotenv()
+    WEATHER_API_KEY = os.environ.get('OPEN_WEATHER_KEY')
+    city = input.place
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+
+    response = requests.get(url)
+    data = response.json()
+    print(f"[MCP_SERVER GET_WEATHER DEBUG] Weather data: {data}", flush=True)
+
+    weather = data['weather'][0]['main']
+    description = data['weather'][0]['description']
+    return WeatherDetails(weather = weather, description = description)
 
 
 # DEFINE RESOURCES

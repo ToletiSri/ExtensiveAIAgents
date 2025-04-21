@@ -1,14 +1,21 @@
-# main.py
-from flask import Flask, request, jsonify
-from memory import Memory
-from dotenv import load_dotenv
 import asyncio
+from flask import Flask, jsonify, request, Response
+from perceive import extract_facts
+from decision import process_order_facts
 from action import MCPClient
+from memory import Memory
 
-app = Flask(__name__)
+# Global singleton
+mcp = None
 memory = Memory()
-load_dotenv()
-mcp = None  # Global singleton
+app = Flask(__name__)
+
+# Initialize MCP client and cache tools
+def init_mcp():
+    global mcp
+    print("Connecting client to MCP server...", flush=True)
+    mcp = MCPClient()
+    print("MCP client-server connected. Tools loaded.", flush=True)
 
 
 @app.route('/preference', methods=['POST'])
@@ -28,38 +35,20 @@ def get_preference():
 
 @app.route('/order', methods=['POST'])
 def handle_order():
+    """Handle food order request."""
     data = request.json
     if not data or 'order_text' not in data:
         return jsonify({'error': 'Missing order_text'}), 400
 
-    from perceive import extract_facts
-    from decision import process_order_facts
     try:
+        # Extract facts and process synchronously
         facts = extract_facts(data['order_text'])
         decision = asyncio.run(process_order_facts(facts, memory=memory, mcpClient=mcp))
-        return jsonify({'Result': decision})
+        # Return plain text decision
+        return Response(decision or '', status=200, mimetype='text/plain')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-async def run():
-    global mcp
-    import threading
-    print("[SERVER INIT] Connecting to MCP client...", flush=True)
-
-    async with MCPClient() as client:
-        mcp = client
-        print("[SERVER INIT] MCP connection established.", flush=True)
-        print("\nAvailable Tools:\n", mcp.get_tools_description(), flush=True)
-
-        # Start Flask server in a separate thread to avoid blocking
-        def start_flask():
-            app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)
-
-        flask_thread = threading.Thread(target=start_flask)
-        flask_thread.start()
-
-        while flask_thread.is_alive():
-            await asyncio.sleep(1)
-
 if __name__ == "__main__":
-    asyncio.run(run())
+    init_mcp()
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)

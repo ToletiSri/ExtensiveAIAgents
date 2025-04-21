@@ -16,8 +16,8 @@ class UserOrder(BaseModel):
     action: str
 
 class WeatherInputs(BaseModel):
-    time: str
     place: str
 
 class WeatherDetails(BaseModel):
     weather: str
+    description: str

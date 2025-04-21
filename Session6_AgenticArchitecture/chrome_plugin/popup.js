@@ -55,16 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_text: orderText })
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                responseBox.textContent = 'Error: ' + data.error;
-            } else {
-                responseBox.textContent = JSON.stringify(data, null, 2);
-            }
+        .then(res => {
+            return res.text().then(text => {
+                if (!res.ok) throw new Error(text || res.statusText);
+                return text;
+            });
         })
-        .catch(() => {
-            responseBox.textContent = 'Failed to submit order.';
+        .then(text => {
+            responseBox.textContent = text;
+        })
+        .catch(err => {
+            responseBox.textContent = 'Error: ' + err.message;
         });
     });
 });
